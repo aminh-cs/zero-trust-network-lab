@@ -1,0 +1,44 @@
+
+{
+  "version": 1,
+  "restricted_resource_roles": [
+    "admin"
+  ],
+  "permissions": [
+    {
+      "role": "analyst",
+      "resource": "security-dashboard",
+      "action": "read"
+    },
+    {
+      "role": "admin",
+      "resource": "security-dashboard",
+      "action": "read"
+    },
+    {
+      "role": "admin",
+      "resource": "security-dashboard",
+      "action": "write"
+    },
+    {
+      "role": "admin",
+      "resource": "security-dashboard",
+      "action": "delete"
+    },
+    {
+      "role": "analyst",
+      "resource": "incident-reports",
+      "action": "read"
+    },
+    {
+      "role": "admin",
+      "resource": "incident-reports",
+      "action": "read"
+    },
+    {
+      "role": "admin",
+      "resource": "incident-reports",
+      "action": "write"
+    }
+  ]
+}

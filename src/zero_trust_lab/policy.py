@@ -1,24 +1,31 @@
 
+from pathlib import Path
+
 from .models import AccessDecision, AccessRequest
+from .policy_config import PolicyConfig, load_policy_config
 
 
 ALLOWED_ACTIONS = {"read", "write", "delete"}
 VALID_SENSITIVITY_LEVELS = {"public", "internal", "restricted"}
 
-# Explicit permissions: (role, resource_id, action)
-DEFAULT_POLICIES = {
-    ("analyst", "security-dashboard", "read"),
-    ("admin", "security-dashboard", "read"),
-    ("admin", "security-dashboard", "write"),
-    ("admin", "security-dashboard", "delete"),
-    ("analyst", "incident-reports", "read"),
-    ("admin", "incident-reports", "read"),
-    ("admin", "incident-reports", "write"),
-}
+DEFAULT_CONFIG_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "policies.json"
+)
 
 
-def evaluate_access(request: AccessRequest) -> AccessDecision:
-    """Evaluate an access request using default-deny rules."""
+def get_default_policy_config() -> PolicyConfig:
+    """Load the default policy configuration from the project config folder."""
+    return load_policy_config(DEFAULT_CONFIG_PATH)
+
+
+def evaluate_access(
+    request: AccessRequest,
+    policy_config: PolicyConfig | None = None,
+) -> AccessDecision:
+    """Evaluate an access request using configurable default-deny rules."""
+
+    if policy_config is None:
+        policy_config = get_default_policy_config()
 
     if not request.identity.authenticated:
         return AccessDecision(
@@ -47,11 +54,12 @@ def evaluate_access(request: AccessRequest) -> AccessDecision:
 
     if (
         request.resource.sensitivity == "restricted"
-        and request.identity.role != "admin"
+        and request.identity.role
+        not in policy_config.restricted_resource_roles
     ):
         return AccessDecision(
             False,
-            "Restricted resources require the admin role",
+            "Restricted resources require an authorized role",
             "ZT-007",
         )
 
@@ -61,7 +69,7 @@ def evaluate_access(request: AccessRequest) -> AccessDecision:
         request.action,
     )
 
-    if permission not in DEFAULT_POLICIES:
+    if permission not in policy_config.permissions:
         return AccessDecision(
             False, "No explicit policy permits this request", "ZT-005"
         )

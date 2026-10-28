@@ -4,18 +4,21 @@ import json
 from dataclasses import asdict
 
 from .audit import audit_event_to_json, create_audit_event
-from .models import AccessRequest, Device, Identity, Resource
-from .policy import evaluate_access
 from .audit_log import append_audit_event
+from .models import AccessRequest, Device, Identity, Resource
+from .policy import evaluate_access, get_default_policy_config
+from .policy_config import PolicyConfigError, load_policy_config
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Simulate a Zero Trust access-control decision."
     )
+
     parser.add_argument("--role", default="analyst")
     parser.add_argument("--resource", default="security-dashboard")
     parser.add_argument("--action", default="read")
+
     parser.add_argument(
         "--unauthenticated",
         action="store_true",
@@ -43,11 +46,26 @@ def main() -> None:
         help="Print the complete timestamped audit event.",
     )
     parser.add_argument(
-    "--audit-log",
-    metavar="PATH",
-    help="Append the access decision to a JSON Lines audit log.",
+        "--audit-log",
+        metavar="PATH",
+        help="Append the access decision to a JSON Lines audit log.",
     )
+    parser.add_argument(
+        "--policy-config",
+        metavar="PATH",
+        help="Path to a custom JSON policy configuration file.",
+    )
+
     args = parser.parse_args()
+
+    try:
+        policy_config = (
+            load_policy_config(args.policy_config)
+            if args.policy_config
+            else get_default_policy_config()
+        )
+    except PolicyConfigError as exc:
+        parser.error(str(exc))
 
     request = AccessRequest(
         identity=Identity(
@@ -67,11 +85,12 @@ def main() -> None:
         action=args.action,
     )
 
-    decision = evaluate_access(request)
+    decision = evaluate_access(request, policy_config)
     event = create_audit_event(request, decision)
 
     if args.audit_log:
         append_audit_event(event, args.audit_log)
+
     if args.audit:
         print(audit_event_to_json(event))
     else:
