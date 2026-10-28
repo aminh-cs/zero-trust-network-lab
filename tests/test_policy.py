@@ -105,3 +105,52 @@ def test_admin_can_write_incident_reports():
 
     assert decision.allowed is True
     assert decision.policy_id == "ZT-ALLOW"
+
+
+def test_analyst_is_denied_restricted_resource():
+    request = make_request(
+        role="analyst",
+        resource_id="incident-reports",
+    )
+    request = AccessRequest(
+        identity=request.identity,
+        device=request.device,
+        resource=Resource(
+            resource_id="incident-reports",
+            sensitivity="restricted",
+        ),
+        action=request.action,
+    )
+
+    decision = evaluate_access(request)
+
+    assert decision.allowed is False
+    assert decision.policy_id == "ZT-007"
+
+
+def test_admin_can_read_restricted_incident_reports():
+    request = AccessRequest(
+        identity=Identity("admin-001", "admin"),
+        device=Device("device-001", managed=True, compliant=True),
+        resource=Resource("incident-reports", sensitivity="restricted"),
+        action="read",
+    )
+
+    decision = evaluate_access(request)
+
+    assert decision.allowed is True
+    assert decision.policy_id == "ZT-ALLOW"
+
+
+def test_unknown_sensitivity_is_denied():
+    request = AccessRequest(
+        identity=Identity("admin-001", "admin"),
+        device=Device("device-001", managed=True, compliant=True),
+        resource=Resource("incident-reports", sensitivity="top-secret"),
+        action="read",
+    )
+
+    decision = evaluate_access(request)
+
+    assert decision.allowed is False
+    assert decision.policy_id == "ZT-006"

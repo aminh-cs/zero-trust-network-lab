@@ -3,7 +3,7 @@ from .models import AccessDecision, AccessRequest
 
 
 ALLOWED_ACTIONS = {"read", "write", "delete"}
-
+VALID_SENSITIVITY_LEVELS = {"public", "internal", "restricted"}
 
 # Explicit permissions: (role, resource_id, action)
 DEFAULT_POLICIES = {
@@ -22,30 +22,37 @@ def evaluate_access(request: AccessRequest) -> AccessDecision:
 
     if not request.identity.authenticated:
         return AccessDecision(
-            allowed=False,
-            reason="Identity is not authenticated",
-            policy_id="ZT-001",
+            False, "Identity is not authenticated", "ZT-001"
         )
 
     if not request.device.managed:
         return AccessDecision(
-            allowed=False,
-            reason="Device is not managed",
-            policy_id="ZT-002",
+            False, "Device is not managed", "ZT-002"
         )
 
     if not request.device.compliant:
         return AccessDecision(
-            allowed=False,
-            reason="Device is not compliant",
-            policy_id="ZT-003",
+            False, "Device is not compliant", "ZT-003"
         )
 
     if request.action not in ALLOWED_ACTIONS:
         return AccessDecision(
-            allowed=False,
-            reason="Requested action is not recognized",
-            policy_id="ZT-004",
+            False, "Requested action is not recognized", "ZT-004"
+        )
+
+    if request.resource.sensitivity not in VALID_SENSITIVITY_LEVELS:
+        return AccessDecision(
+            False, "Resource sensitivity is not recognized", "ZT-006"
+        )
+
+    if (
+        request.resource.sensitivity == "restricted"
+        and request.identity.role != "admin"
+    ):
+        return AccessDecision(
+            False,
+            "Restricted resources require the admin role",
+            "ZT-007",
         )
 
     permission = (
@@ -56,13 +63,11 @@ def evaluate_access(request: AccessRequest) -> AccessDecision:
 
     if permission not in DEFAULT_POLICIES:
         return AccessDecision(
-            allowed=False,
-            reason="No explicit policy permits this request",
-            policy_id="ZT-005",
+            False, "No explicit policy permits this request", "ZT-005"
         )
 
     return AccessDecision(
-        allowed=True,
-        reason="Authenticated identity, compliant device, and explicit policy",
-        policy_id="ZT-ALLOW",
+        True,
+        "All checks passed and an explicit policy permits this request",
+        "ZT-ALLOW",
     )

@@ -3,6 +3,7 @@ import argparse
 import json
 from dataclasses import asdict
 
+from .audit import audit_event_to_json, create_audit_event
 from .models import AccessRequest, Device, Identity, Resource
 from .policy import evaluate_access
 
@@ -29,6 +30,17 @@ def main() -> None:
         action="store_true",
         help="Simulate a noncompliant device.",
     )
+    parser.add_argument(
+        "--sensitivity",
+        choices=["public", "internal", "restricted", "top-secret"],
+        default="internal",
+        help="Resource sensitivity level.",
+    )
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="Print the complete timestamped audit event.",
+    )
     args = parser.parse_args()
 
     request = AccessRequest(
@@ -44,13 +56,18 @@ def main() -> None:
         ),
         resource=Resource(
             resource_id=args.resource,
-            sensitivity="internal",
+            sensitivity=args.sensitivity,
         ),
         action=args.action,
     )
 
     decision = evaluate_access(request)
-    print(json.dumps(asdict(decision), indent=2))
+
+    if args.audit:
+        event = create_audit_event(request, decision)
+        print(audit_event_to_json(event))
+    else:
+        print(json.dumps(asdict(decision), indent=2))
 
 
 if __name__ == "__main__":

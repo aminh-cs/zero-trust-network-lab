@@ -14,6 +14,9 @@ A Python-based simulation of a Zero Trust access-control policy engine. The proj
 - **Command-line interface:** run sample requests and receive JSON output.
 - **Automated tests:** verify policy behavior and CLI scenarios.
 - **Continuous integration:** run tests through GitHub Actions.
+- **Sensitivity-aware authorization:** validate resource sensitivity and apply stricter rules to restricted resources.
+- **Structured audit events: record** timestamps, identity, device, resource, action, decision, reason, and policy ID in JSON.
+- **Audit CLI mode:** use --audit to print the complete event for an access decision.
 
 ## Architecture
 
@@ -150,3 +153,39 @@ The `sensitivity` field on a resource is currently descriptive and does not affe
 ## Disclaimer
 
 Built for educational purposes to explore Zero Trust principles, policy design, and automated security testing. Do not use it as a production security control without substantial additional engineering and independent security review.
+
+## Sensitivity-Aware Access and Audit Events
+
+### Sensitivity-aware access
+
+An analyst requesting access to restricted incident reports should be denied:
+
+```powershell
+python -m zero_trust_lab --resource incident-reports --sensitivity restricted
+```
+
+### Structured audit output
+
+Print a timestamped JSON audit event for an allowed request:
+
+```powershell
+python -m zero_trust_lab --audit
+```
+
+Print an audit event for a denied request:
+
+```powershell
+python -m zero_trust_lab --role analyst --action write --audit
+```
+
+Audit events include the timestamp, identity, device, resource, requested action, decision, reason, and policy ID. Currently, audit events are printed to the terminal; persistent or tamper-resistant log storage is not implemented.
+
+## Current Test Coverage
+
+The project currently has 21 automated tests covering policy decisions, device posture, resource sensitivity, audit events, and command-line behavior.
+
+Run the tests with:
+
+```powershell
+python -m pytest -v
+```

@@ -38,3 +38,28 @@ def test_cli_denies_unmanaged_device():
     decision = json.loads(result.stdout)
     assert decision["allowed"] is False
     assert decision["policy_id"] == "ZT-002"
+
+
+def test_cli_audit_output_contains_timestamp_and_identity():
+    result = run_cli("--audit")
+
+    assert result.returncode == 0
+    event = json.loads(result.stdout)
+    assert "timestamp" in event
+    assert event["subject_id"] == "demo-user"
+    assert event["allowed"] is True
+
+
+def test_cli_audit_records_restricted_resource_denial():
+    result = run_cli(
+        "--resource",
+        "incident-reports",
+        "--sensitivity",
+        "restricted",
+        "--audit",
+    )
+
+    assert result.returncode == 0
+    event = json.loads(result.stdout)
+    assert event["allowed"] is False
+    assert event["policy_id"] == "ZT-007"
