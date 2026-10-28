@@ -8,6 +8,9 @@ from zero_trust_lab.models import (
 from zero_trust_lab.policy import evaluate_access
 
 
+from zero_trust_lab.policy_config import PolicyConfig
+
+
 def make_request(
     *,
     role="analyst",
@@ -154,3 +157,73 @@ def test_unknown_sensitivity_is_denied():
 
     assert decision.allowed is False
     assert decision.policy_id == "ZT-006"
+
+
+def test_custom_policy_can_deny_default_permission():
+    from zero_trust_lab.models import AccessRequest, Device, Identity, Resource
+    from zero_trust_lab.policy import evaluate_access
+
+    request = AccessRequest(
+        identity=Identity(
+            subject_id="test-user",
+            role="analyst",
+            authenticated=True,
+        ),
+        device=Device(
+            device_id="test-device",
+            managed=True,
+            compliant=True,
+        ),
+        resource=Resource(
+            resource_id="security-dashboard",
+            sensitivity="internal",
+        ),
+        action="read",
+    )
+
+    restrictive_config = PolicyConfig(
+        version=1,
+        restricted_resource_roles=frozenset({"admin"}),
+        permissions=frozenset(),
+    )
+
+    decision = evaluate_access(request, restrictive_config)
+
+    assert decision.allowed is False
+    assert decision.policy_id == "ZT-005"
+
+
+def test_custom_policy_can_allow_additional_permission():
+    from zero_trust_lab.models import AccessRequest, Device, Identity, Resource
+    from zero_trust_lab.policy import evaluate_access
+
+    request = AccessRequest(
+        identity=Identity(
+            subject_id="test-user",
+            role="analyst",
+            authenticated=True,
+        ),
+        device=Device(
+            device_id="test-device",
+            managed=True,
+            compliant=True,
+        ),
+        resource=Resource(
+            resource_id="incident-reports",
+            sensitivity="internal",
+        ),
+        action="write",
+    )
+
+    expanded_config = PolicyConfig(
+        version=1,
+        restricted_resource_roles=frozenset({"admin"}),
+        permissions=frozenset({
+            ("analyst", "incident-reports", "write"),
+        }),
+    )
+
+    decision = evaluate_access(request, expanded_config)
+
+    assert decision.allowed is True
+    assert decision.policy_id == "ZT-ALLOW"
