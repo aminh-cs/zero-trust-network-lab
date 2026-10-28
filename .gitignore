@@ -8,3 +8,6 @@ build/
 dist/
 .coverage
 htmlcov/
+# Local audit logs may contain sensitive information
+logs/
+*.jsonl

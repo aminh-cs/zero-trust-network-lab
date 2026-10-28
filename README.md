@@ -189,3 +189,6 @@ Run the tests with:
 ```powershell
 python -m pytest -v
 ```
+python -m zero_trust_lab --audit-log logs\audit.jsonl
+python -m zero_trust_lab --role analyst --action write --audit-log logs\audit.jsonl
+Get-Content logs\audit.jsonl

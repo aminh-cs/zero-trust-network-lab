@@ -6,6 +6,7 @@ from dataclasses import asdict
 from .audit import audit_event_to_json, create_audit_event
 from .models import AccessRequest, Device, Identity, Resource
 from .policy import evaluate_access
+from .audit_log import append_audit_event
 
 
 def main() -> None:
@@ -41,6 +42,11 @@ def main() -> None:
         action="store_true",
         help="Print the complete timestamped audit event.",
     )
+    parser.add_argument(
+    "--audit-log",
+    metavar="PATH",
+    help="Append the access decision to a JSON Lines audit log.",
+    )
     args = parser.parse_args()
 
     request = AccessRequest(
@@ -62,9 +68,11 @@ def main() -> None:
     )
 
     decision = evaluate_access(request)
+    event = create_audit_event(request, decision)
 
+    if args.audit_log:
+        append_audit_event(event, args.audit_log)
     if args.audit:
-        event = create_audit_event(request, decision)
         print(audit_event_to_json(event))
     else:
         print(json.dumps(asdict(decision), indent=2))

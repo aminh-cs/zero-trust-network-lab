@@ -63,3 +63,35 @@ def test_cli_audit_records_restricted_resource_denial():
     event = json.loads(result.stdout)
     assert event["allowed"] is False
     assert event["policy_id"] == "ZT-007"
+
+
+def test_cli_writes_audit_log(tmp_path):
+    log_path = tmp_path / "audit.jsonl"
+
+    result = run_cli("--audit-log", str(log_path))
+
+    assert result.returncode == 0
+    records = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(records) == 1
+
+    event = json.loads(records[0])
+    assert event["allowed"] is True
+    assert event["subject_id"] == "demo-user"
+
+
+def test_cli_logs_denied_requests(tmp_path):
+    log_path = tmp_path / "audit.jsonl"
+
+    result = run_cli(
+        "--role",
+        "analyst",
+        "--action",
+        "write",
+        "--audit-log",
+        str(log_path),
+    )
+
+    assert result.returncode == 0
+    event = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
+    assert event["allowed"] is False
+    assert event["policy_id"] == "ZT-005"
