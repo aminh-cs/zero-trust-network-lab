@@ -1,7 +1,7 @@
 
 from pathlib import Path
 
-from .models import AccessDecision, AccessRequest
+from .models import AccessDecision, AccessRequest, PolicyCheck
 from .policy_config import PolicyConfig, load_policy_config
 
 
@@ -14,7 +14,7 @@ DEFAULT_CONFIG_PATH = (
 
 
 def get_default_policy_config() -> PolicyConfig:
-    """Load the default policy configuration from the project config folder."""
+    """Load the default policy configuration."""
     return load_policy_config(DEFAULT_CONFIG_PATH)
 
 
@@ -22,43 +22,55 @@ def evaluate_access(
     request: AccessRequest,
     policy_config: PolicyConfig | None = None,
 ) -> AccessDecision:
-    """Evaluate an access request using configurable default-deny rules."""
+    """Evaluate access and record checks up to the first failure."""
 
     if policy_config is None:
         policy_config = get_default_policy_config()
 
+    checks: list[PolicyCheck] = []
+
+    def record_check(name: str, passed: bool) -> None:
+        checks.append(PolicyCheck(check=name, passed=passed))
+
+    def deny(reason: str, policy_id: str) -> AccessDecision:
+        return AccessDecision(
+            allowed=False,
+            reason=reason,
+            policy_id=policy_id,
+            checks=tuple(checks),
+        )
+
+    record_check("authentication", request.identity.authenticated)
     if not request.identity.authenticated:
-        return AccessDecision(
-            False, "Identity is not authenticated", "ZT-001"
-        )
+        return deny("Identity is not authenticated", "ZT-001")
 
+    record_check("device_management", request.device.managed)
     if not request.device.managed:
-        return AccessDecision(
-            False, "Device is not managed", "ZT-002"
-        )
+        return deny("Device is not managed", "ZT-002")
 
+    record_check("device_compliance", request.device.compliant)
     if not request.device.compliant:
-        return AccessDecision(
-            False, "Device is not compliant", "ZT-003"
-        )
+        return deny("Device is not compliant", "ZT-003")
 
-    if request.action not in ALLOWED_ACTIONS:
-        return AccessDecision(
-            False, "Requested action is not recognized", "ZT-004"
-        )
+    action_valid = request.action in ALLOWED_ACTIONS
+    record_check("action_validation", action_valid)
+    if not action_valid:
+        return deny("Requested action is not recognized", "ZT-004")
 
-    if request.resource.sensitivity not in VALID_SENSITIVITY_LEVELS:
-        return AccessDecision(
-            False, "Resource sensitivity is not recognized", "ZT-006"
-        )
+    sensitivity_valid = (
+        request.resource.sensitivity in VALID_SENSITIVITY_LEVELS
+    )
+    record_check("sensitivity_validation", sensitivity_valid)
+    if not sensitivity_valid:
+        return deny("Resource sensitivity is not recognized", "ZT-006")
 
-    if (
-        request.resource.sensitivity == "restricted"
-        and request.identity.role
-        not in policy_config.restricted_resource_roles
-    ):
-        return AccessDecision(
-            False,
+    role_authorized = (
+        request.resource.sensitivity != "restricted"
+        or request.identity.role in policy_config.restricted_resource_roles
+    )
+    record_check("restricted_resource_role", role_authorized)
+    if not role_authorized:
+        return deny(
             "Restricted resources require an authorized role",
             "ZT-007",
         )
@@ -68,14 +80,17 @@ def evaluate_access(
         request.resource.resource_id,
         request.action,
     )
-
-    if permission not in policy_config.permissions:
-        return AccessDecision(
-            False, "No explicit policy permits this request", "ZT-005"
+    permission_granted = permission in policy_config.permissions
+    record_check("explicit_permission", permission_granted)
+    if not permission_granted:
+        return deny(
+            "No explicit policy permits this request",
+            "ZT-005",
         )
 
     return AccessDecision(
-        True,
-        "All checks passed and an explicit policy permits this request",
-        "ZT-ALLOW",
+        allowed=True,
+        reason="All checks passed and an explicit policy permits this request",
+        policy_id="ZT-ALLOW",
+        checks=tuple(checks),
     )

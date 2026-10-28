@@ -218,6 +218,48 @@ The policy engine evaluates requests in the following order:
 A request is allowed only if it passes every check and has an explicit matching permission. Otherwise, access is denied.
 
 The resource sensitivity field affects authorization: `restricted` resources require an authorized role. The `public` and `internal` sensitivity levels do not bypass the other access-control checks.
+### Policy Decision Tracing
+
+Use the `--trace` CLI option to inspect the individual checks performed during an access-control decision.
+
+For an allowed request:
+
+```powershell
+python -m zero_trust_lab --trace
+```
+
+For a request denied because the device is unmanaged:
+
+```powershell
+python -m zero_trust_lab --unmanaged-device --trace
+```
+
+The output includes a `checks` array. Each entry contains the check name and a Boolean `passed` result.
+
+Example:
+
+```json
+{
+  "allowed": false,
+  "reason": "Device is not managed",
+  "policy_id": "ZT-002",
+  "checks": [
+    {
+      "check": "authentication",
+      "passed": true
+    },
+    {
+      "check": "device_management",
+      "passed": false
+    }
+  ]
+}
+```
+
+Checks are recorded in evaluation order, and evaluation stops at the first failed check. This provides an explainable record of why access was granted or denied.
+
+Tracing is optional. Without `--trace`, the standard CLI output omits the `checks` array. The existing `--audit` option continues to print the audit event.
+
 
 ## Access Policy Examples
 

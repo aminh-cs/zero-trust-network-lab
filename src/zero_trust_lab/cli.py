@@ -46,6 +46,11 @@ def main() -> None:
         help="Print the complete timestamped audit event.",
     )
     parser.add_argument(
+        "--trace",
+        action="store_true",
+        help="Include policy check results in the output.",
+    )
+    parser.add_argument(
         "--audit-log",
         metavar="PATH",
         help="Append the access decision to a JSON Lines audit log.",
@@ -94,7 +99,10 @@ def main() -> None:
     if args.audit:
         print(audit_event_to_json(event))
     else:
-        print(json.dumps(asdict(decision), indent=2))
+        output = asdict(decision)
+        if not args.trace:
+            output.pop("checks", None)
+        print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":

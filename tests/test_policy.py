@@ -227,3 +227,72 @@ def test_custom_policy_can_allow_additional_permission():
 
     assert decision.allowed is True
     assert decision.policy_id == "ZT-ALLOW"
+
+
+def test_allowed_decision_records_all_checks_in_order():
+    from zero_trust_lab.models import AccessRequest, Device, Identity, Resource
+    from zero_trust_lab.policy import evaluate_access
+
+    request = AccessRequest(
+        identity=Identity(
+            subject_id="trace-user",
+            role="analyst",
+            authenticated=True,
+        ),
+        device=Device(
+            device_id="trace-device",
+            managed=True,
+            compliant=True,
+        ),
+        resource=Resource(
+            resource_id="security-dashboard",
+            sensitivity="internal",
+        ),
+        action="read",
+    )
+
+    decision = evaluate_access(request)
+
+    assert decision.allowed is True
+    assert [check.check for check in decision.checks] == [
+        "authentication",
+        "device_management",
+        "device_compliance",
+        "action_validation",
+        "sensitivity_validation",
+        "restricted_resource_role",
+        "explicit_permission",
+    ]
+    assert all(check.passed for check in decision.checks)
+
+
+def test_denied_decision_trace_stops_at_first_failure():
+    from zero_trust_lab.models import AccessRequest, Device, Identity, Resource
+    from zero_trust_lab.policy import evaluate_access
+
+    request = AccessRequest(
+        identity=Identity(
+            subject_id="trace-user",
+            role="analyst",
+            authenticated=True,
+        ),
+        device=Device(
+            device_id="trace-device",
+            managed=False,
+            compliant=True,
+        ),
+        resource=Resource(
+            resource_id="security-dashboard",
+            sensitivity="internal",
+        ),
+        action="read",
+    )
+
+    decision = evaluate_access(request)
+
+    assert decision.allowed is False
+    assert decision.policy_id == "ZT-002"
+    assert [(check.check, check.passed) for check in decision.checks] == [
+        ("authentication", True),
+        ("device_management", False),
+    ]

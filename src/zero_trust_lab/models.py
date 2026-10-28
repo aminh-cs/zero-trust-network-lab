@@ -31,7 +31,14 @@ class AccessRequest:
 
 
 @dataclass(frozen=True)
+class PolicyCheck:
+    check: str
+    passed: bool
+
+
+@dataclass(frozen=True)
 class AccessDecision:
     allowed: bool
     reason: str
     policy_id: str
+    checks: tuple[PolicyCheck, ...] = ()

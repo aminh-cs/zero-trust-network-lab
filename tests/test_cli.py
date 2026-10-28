@@ -95,3 +95,50 @@ def test_cli_logs_denied_requests(tmp_path):
     event = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
     assert event["allowed"] is False
     assert event["policy_id"] == "ZT-005"
+
+
+def test_cli_trace_shows_all_checks_for_allowed_request():
+    import json
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-m", "zero_trust_lab", "--trace"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    output = json.loads(result.stdout)
+
+    assert output["allowed"] is True
+    assert len(output["checks"]) == 7
+    assert all(check["passed"] for check in output["checks"])
+
+
+def test_cli_trace_stops_at_first_failed_check():
+    import json
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "zero_trust_lab",
+            "--unmanaged-device",
+            "--trace",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    output = json.loads(result.stdout)
+
+    assert output["allowed"] is False
+    assert output["policy_id"] == "ZT-002"
+    assert output["checks"] == [
+        {"check": "authentication", "passed": True},
+        {"check": "device_management", "passed": False},
+    ]
