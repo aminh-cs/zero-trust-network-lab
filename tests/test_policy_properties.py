@@ -1,4 +1,3 @@
-
 from hypothesis import given, strategies as st
 
 from zero_trust_lab.models import (
