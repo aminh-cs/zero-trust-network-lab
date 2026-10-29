@@ -1,4 +1,5 @@
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from zero_trust_lab.models import (
     AccessRequest,
@@ -8,7 +9,6 @@ from zero_trust_lab.models import (
 )
 from zero_trust_lab.policy import evaluate_access
 from zero_trust_lab.policy_config import PolicyConfig
-
 
 non_empty_text = st.text(
     alphabet=st.characters(
