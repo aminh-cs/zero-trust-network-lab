@@ -1,4 +1,3 @@
-
 import json
 
 from zero_trust_lab.audit import create_audit_event

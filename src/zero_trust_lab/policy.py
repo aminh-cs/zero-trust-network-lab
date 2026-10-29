@@ -1,16 +1,12 @@
-
 from pathlib import Path
 
 from .models import AccessDecision, AccessRequest, PolicyCheck
 from .policy_config import PolicyConfig, load_policy_config
 
-
 ALLOWED_ACTIONS = {"read", "write", "delete"}
 VALID_SENSITIVITY_LEVELS = {"public", "internal", "restricted"}
 
-DEFAULT_CONFIG_PATH = (
-    Path(__file__).resolve().parents[2] / "config" / "policies.json"
-)
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "policies.json"
 
 
 def get_default_policy_config() -> PolicyConfig:
@@ -57,9 +53,7 @@ def evaluate_access(
     if not action_valid:
         return deny("Requested action is not recognized", "ZT-004")
 
-    sensitivity_valid = (
-        request.resource.sensitivity in VALID_SENSITIVITY_LEVELS
-    )
+    sensitivity_valid = request.resource.sensitivity in VALID_SENSITIVITY_LEVELS
     record_check("sensitivity_validation", sensitivity_valid)
     if not sensitivity_valid:
         return deny("Resource sensitivity is not recognized", "ZT-006")

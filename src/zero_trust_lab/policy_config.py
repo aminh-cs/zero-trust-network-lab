@@ -1,8 +1,6 @@
-
 import json
 from dataclasses import dataclass
 from pathlib import Path
-
 
 ALLOWED_ACTIONS = {"read", "write", "delete"}
 
@@ -30,9 +28,7 @@ def load_policy_config(path: str | Path) -> PolicyConfig:
             f"Cannot read policy config '{config_path}': {exc}"
         ) from exc
     except json.JSONDecodeError as exc:
-        raise PolicyConfigError(
-            f"Invalid JSON in '{config_path}': {exc.msg}"
-        ) from exc
+        raise PolicyConfigError(f"Invalid JSON in '{config_path}': {exc.msg}") from exc
 
     if not isinstance(data, dict):
         raise PolicyConfigError("Config must be a JSON object.")
@@ -63,8 +59,7 @@ def load_policy_config(path: str | Path) -> PolicyConfig:
         or any(not isinstance(role, str) or not role.strip() for role in roles)
     ):
         raise PolicyConfigError(
-            "'restricted_resource_roles' must be a non-empty list "
-            "of non-empty strings."
+            "'restricted_resource_roles' must be a non-empty list of non-empty strings."
         )
 
     if len(roles) != len(set(roles)):
@@ -80,7 +75,10 @@ def load_policy_config(path: str | Path) -> PolicyConfig:
     expected_permission_fields = {"role", "resource", "action"}
 
     for index, permission in enumerate(raw_permissions):
-        if not isinstance(permission, dict) or set(permission) != expected_permission_fields:
+        if (
+            not isinstance(permission, dict)
+            or set(permission) != expected_permission_fields
+        ):
             raise PolicyConfigError(
                 f"Permission at index {index} must contain exactly "
                 "'role', 'resource', and 'action'."

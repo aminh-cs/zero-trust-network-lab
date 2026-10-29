@@ -1,4 +1,3 @@
-
 from zero_trust_lab.models import (
     AccessRequest,
     Device,
@@ -6,8 +5,6 @@ from zero_trust_lab.models import (
     Resource,
 )
 from zero_trust_lab.policy import evaluate_access
-
-
 from zero_trust_lab.policy_config import PolicyConfig
 
 
@@ -84,9 +81,7 @@ def test_unknown_action_is_denied():
 
 
 def test_analyst_cannot_write_to_security_dashboard():
-    decision = evaluate_access(
-        make_request(role="analyst", action="write")
-    )
+    decision = evaluate_access(make_request(role="analyst", action="write"))
 
     assert decision.allowed is False
     assert decision.policy_id == "ZT-005"
@@ -218,9 +213,11 @@ def test_custom_policy_can_allow_additional_permission():
     expanded_config = PolicyConfig(
         version=1,
         restricted_resource_roles=frozenset({"admin"}),
-        permissions=frozenset({
-            ("analyst", "incident-reports", "write"),
-        }),
+        permissions=frozenset(
+            {
+                ("analyst", "incident-reports", "write"),
+            }
+        ),
     )
 
     decision = evaluate_access(request, expanded_config)

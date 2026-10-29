@@ -1,7 +1,6 @@
-
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 import json
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 
 from .models import AccessDecision, AccessRequest
 
@@ -26,7 +25,7 @@ def create_audit_event(
 ) -> AuditEvent:
     """Create a timestamped audit event for an access decision."""
     return AuditEvent(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         subject_id=request.identity.subject_id,
         device_id=request.device.device_id,
         resource_id=request.resource.resource_id,

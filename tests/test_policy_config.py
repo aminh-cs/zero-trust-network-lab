@@ -1,4 +1,3 @@
-
 import json
 
 import pytest
@@ -7,7 +6,6 @@ from zero_trust_lab.policy_config import (
     PolicyConfigError,
     load_policy_config,
 )
-
 
 VALID_CONFIG = {
     "version": 1,
