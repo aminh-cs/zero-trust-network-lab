@@ -23,13 +23,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install wheel
           python -m pip install -e . --no-build-isolation
-          python -m pip install pytest ruff
+          python -m pip install pytest ruff mypy
 
       - name: Check code formatting
         run: python -m ruff format --check .
 
       - name: Lint Python code
         run: python -m ruff check .
+
+      - name: Check static types
+        run: python -m mypy src/zero_trust_lab
 
       - name: Run tests
         run: python -m pytest -v
