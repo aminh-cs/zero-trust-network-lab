@@ -1,5 +1,7 @@
 # Zero Trust Network Lab
 
+[![Tests and Code Quality](https://github.com/aminh-cs/zero-trust-network-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/aminh-cs/zero-trust-network-lab/actions/workflows/tests.yml)
+
 A Python-based simulation of a Zero Trust access-control policy engine. This project demonstrates explicit authorization, least privilege, device posture verification, default-deny behavior, configurable policies, structured audit events, policy decision tracing, and explainable access decisions.
 
 > **Project status:** Educational security lab. This is a policy simulation, not a production identity or network enforcement system.
@@ -25,51 +27,29 @@ A Python-based simulation of a Zero Trust access-control policy engine. This pro
 
 The project separates request models, policy configuration, policy evaluation, reporting, audit handling, and command-line interaction.
 
-```text
-CLI arguments
-     |
-     v
-AccessRequest
-  | Identity
-  | Device
-  | Resource
-  | Action
-     |
-     v
-Policy configuration
-  | Load JSON configuration
-  | Validate schema and permissions
-     |
-     v
-Policy evaluation
-  | Authentication
-  | Device management
-  | Device compliance
-  | Action validation
-  | Sensitivity validation
-  | Restricted-resource role check
-  | Explicit permission lookup
-     |
-     v
-AccessDecision
-  | Allowed / Denied
-  | Reason
-  | Policy ID
-  | Policy checks
-     |
-     +----------------------+
-     |                      |
-     v                      v
-Decision reporting     Audit event
-  | Explanation          | Timestamp
-  | Failed check         | Request context
-  | Human-readable       | Decision details
-     |                      |
-     +----------+-----------+
-                |
-                v
-       CLI output / JSON
-       / JSON Lines audit log
+```mermaid
+flowchart TD
+    A[CLI Arguments] --> B[Access Request]
+    B --> C[Policy Configuration]
+    C --> D[Load and Validate JSON]
+    D --> E[Policy Evaluation]
+
+    E --> F[Authentication]
+    F --> G[Device Management]
+    G --> H[Device Compliance]
+    H --> I[Action Validation]
+    I --> J[Sensitivity Validation]
+    J --> K[Restricted Resource Role Check]
+    K --> L[Explicit Permission Lookup]
+
+    L --> M[Access Decision]
+
+    M --> N[Decision Reporting]
+    M --> O[Audit Event]
+
+    N --> P[CLI Output / JSON]
+    O --> P
+    O --> Q[JSON Lines Audit Log]
 ```
 
 ### Main components
@@ -85,6 +65,32 @@ Decision reporting     Audit event
 | `audit_log.py` | Appends audit events to persistent JSON Lines logs. |
 | `config/policies.json` | Stores the default access policy configuration. |
 | `tests/` | Contains unit, property-based, decision-matrix, security, reporting, and CLI tests. |
+
+### Project structure
+
+```text
+zero-trust-network-lab/
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+├── config/
+│   └── policies.json
+├── logs/
+├── src/
+│   └── zero_trust_lab/
+│       ├── __init__.py
+│       ├── __main__.py
+│       ├── audit.py
+│       ├── audit_log.py
+│       ├── cli.py
+│       ├── models.py
+│       ├── policy.py
+│       ├── policy_config.py
+│       └── reporting.py
+├── tests/
+├── .gitignore
+├── pyproject.toml
+└── README.md
 
 ## Requirements
 
