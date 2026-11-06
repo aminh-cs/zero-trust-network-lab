@@ -41,3 +41,17 @@ class AccessDecision:
     reason: str
     policy_id: str
     checks: tuple[PolicyCheck, ...] = ()
+
+
+@dataclass(frozen=True)
+class DecisionExplanation:
+    policy_id: str
+    summary: str
+    failed_check: str | None
+    failed_check_reason: str | None
+
+
+@dataclass(frozen=True)
+class AccessReport:
+    decision: AccessDecision
+    explanation: DecisionExplanation

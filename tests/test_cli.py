@@ -141,3 +141,56 @@ def test_cli_trace_stops_at_first_failed_check():
         {"check": "authentication", "passed": True},
         {"check": "device_management", "passed": False},
     ]
+
+
+def test_cli_report_explains_denied_request():
+    result = run_cli(
+        "--role",
+        "analyst",
+        "--resource",
+        "incident-reports",
+        "--sensitivity",
+        "restricted",
+        "--action",
+        "read",
+        "--report",
+    )
+
+    assert result.returncode == 0
+    assert "ACCESS DECISION REPORT" in result.stdout
+    assert "Decision: DENIED" in result.stdout
+    assert "Policy ID: ZT-007" in result.stdout
+    assert "restricted_resource_role" in result.stdout
+    assert "not authorized" in result.stdout
+
+
+def test_cli_report_explains_allowed_request():
+    result = run_cli(
+        "--role",
+        "admin",
+        "--resource",
+        "incident-reports",
+        "--sensitivity",
+        "restricted",
+        "--action",
+        "read",
+        "--report",
+    )
+
+    assert result.returncode == 0
+    assert "ACCESS DECISION REPORT" in result.stdout
+    assert "Decision: ALLOWED" in result.stdout
+    assert "Policy ID: ZT-ALLOW" in result.stdout
+    assert "Failed security check:" not in result.stdout
+
+
+def test_cli_without_report_preserves_json_output():
+    result = run_cli()
+
+    assert result.returncode == 0
+
+    output = json.loads(result.stdout)
+
+    assert output["allowed"] is True
+    assert output["policy_id"] == "ZT-ALLOW"
+    assert "reason" in output

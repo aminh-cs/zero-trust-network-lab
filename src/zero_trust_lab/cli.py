@@ -7,6 +7,40 @@ from .audit_log import append_audit_event
 from .models import AccessRequest, Device, Identity, Resource
 from .policy import evaluate_access, get_default_policy_config
 from .policy_config import PolicyConfigError, load_policy_config
+from .reporting import explain_decision
+
+
+def format_report(report: object) -> str:
+    """Format an access report as human-readable text."""
+    explanation = report.explanation  # type: ignore[attr-defined]
+    decision = report.decision  # type: ignore[attr-defined]
+
+    status = "ALLOWED" if decision.allowed else "DENIED"
+
+    lines = [
+        "ACCESS DECISION REPORT",
+        "=" * 40,
+        "",
+        f"Decision: {status}",
+        f"Policy ID: {explanation.policy_id}",
+        "",
+        "Explanation:",
+        explanation.summary,
+    ]
+
+    if explanation.failed_check:
+        lines.extend(
+            [
+                "",
+                "Failed security check:",
+                explanation.failed_check,
+                "",
+                "Reason:",
+                explanation.failed_check_reason,
+            ]
+        )
+
+    return "\n".join(lines)
 
 
 def main() -> None:
@@ -48,6 +82,11 @@ def main() -> None:
         "--trace",
         action="store_true",
         help="Include policy check results in the output.",
+    )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Print a human-readable access decision report.",
     )
     parser.add_argument(
         "--audit-log",
@@ -97,6 +136,9 @@ def main() -> None:
 
     if args.audit:
         print(audit_event_to_json(event))
+    elif args.report:
+        report = explain_decision(decision)
+        print(format_report(report))
     else:
         output = asdict(decision)
         if not args.trace:
