@@ -91,6 +91,7 @@ zero-trust-network-lab/
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
+```
 
 ## Requirements
 
@@ -347,6 +348,85 @@ Get-Content logs\audit.jsonl
 ```
 
 The application creates the parent directory when necessary. Audit logs are useful for inspecting simulated decisions, but the implementation does not provide tamper-resistant storage, cryptographic integrity protection, or centralized log management.
+
+## Demo
+
+The following examples demonstrate successful access, policy enforcement, decision explanations, and audit logging.
+
+### 1. Allowed access
+
+Run the default access request:
+
+```powershell
+python -m zero_trust_lab --report --trace
+```
+
+Example output:
+
+```text
+ACCESS DECISION REPORT
+========================================
+
+Decision: ALLOWED
+Policy ID: ZT-ALLOW
+
+Explanation:
+Access was allowed because all security checks passed and an explicit permission was found.
+```
+
+### 2. Denied access
+
+Simulate an unmanaged device:
+
+```powershell
+python -m zero_trust_lab --unmanaged-device --report
+```
+
+Example output:
+
+```text
+ACCESS DECISION REPORT
+========================================
+
+Decision: DENIED
+Policy ID: ZT-002
+
+Explanation:
+The device is not managed.
+
+Failed security check:
+device_management
+
+Reason:
+The device is not managed.
+```
+
+### 3. Audit logging
+
+Record both decisions in a JSON Lines audit log:
+
+```powershell
+python -m zero_trust_lab --audit-log demo-audit.jsonl
+python -m zero_trust_lab --unmanaged-device --audit-log demo-audit.jsonl
+```
+
+Inspect the resulting log:
+
+```powershell
+Get-Content demo-audit.jsonl
+```
+
+Each event records information including:
+
+- Timestamp (UTC)
+- Subject and device identifiers
+- Requested resource and action
+- Identity role
+- Access decision
+- Decision reason
+- Policy ID
+
+The audit log demonstrates how both successful and denied access decisions can be retained for later inspection.
 
 ## Testing
 
