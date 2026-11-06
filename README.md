@@ -1,8 +1,8 @@
 # Zero Trust Network Lab
 
-A Python-based simulation of a Zero Trust access-control policy engine. This project demonstrates explicit authorization, least privilege, device posture checks, default-deny behavior, configurable policies, structured audit events, and explainable access decisions.
+A Python-based simulation of a Zero Trust access-control policy engine. This project demonstrates explicit authorization, least privilege, device posture verification, default-deny behavior, configurable policies, structured audit events, policy decision tracing, and explainable access decisions.
 
-> **Status:** Educational security lab. This is a policy simulation, not a production identity or network enforcement system.
+> **Project status:** Educational security lab. This is a policy simulation, not a production identity or network enforcement system.
 
 ## Features
 
@@ -10,79 +10,86 @@ A Python-based simulation of a Zero Trust access-control policy engine. This pro
 - **Device posture checks:** Require managed and compliant devices.
 - **Explicit authorization:** Grant access only when a matching role, resource, and action permission exists.
 - **Default-deny behavior:** Reject unknown actions and requests without explicit permission.
-- **Explainable decisions:** Return an allow/deny result, a reason, and a policy identifier.
-- **Configurable policies:** Load access permissions from a JSON configuration file instead of hard-coding them in the policy engine.
-- **Policy validation:** Reject malformed JSON, unsupported configuration versions, missing or unknown fields, invalid actions, empty values, and duplicate entries.
-- **Sensitivity-aware authorization:** Validate resource sensitivity and require an authorized role for restricted resources.
+- **Restricted-resource authorization:** Require an authorized role for restricted resources.
+- **Configurable policies:** Load permissions from JSON configuration files.
+- **Policy validation:** Reject malformed JSON, unsupported versions, missing or unknown fields, invalid actions, empty values, and duplicate entries.
+- **Policy decision tracing:** Record individual security checks and stop at the first failure.
+- **Explainable decisions:** Generate human-readable explanations for allowed and denied requests.
 - **Structured audit events:** Record timestamps, identity, device, resource, action, decision, reason, and policy ID.
-- **Persistent audit logging:** Append audit events to a JSON Lines (`.jsonl`) file.
-- **Command-line interface:** Simulate access requests, select custom policy files, and inspect audit events.
-- **Automated tests:** Test access decisions, custom policies, configuration validation, audit events, audit logging, and CLI behavior.
-- **Continuous integration:** Run automated tests through GitHub Actions.
+- **Persistent audit logging:** Append audit events to JSON Lines (`.jsonl`) files.
+- **Command-line interface:** Simulate access requests, load custom policies, inspect decision traces, and generate reports.
+- **Automated testing:** Use pytest and Hypothesis for unit, security, decision-matrix, and property-based tests.
+- **Continuous integration:** Automatically run formatting, linting, static type checking, and tests through GitHub Actions.
 
 ## Architecture
 
-The project separates request data, policy configuration, policy evaluation, audit handling, and command-line interaction.
+The project separates request models, policy configuration, policy evaluation, reporting, audit handling, and command-line interaction.
 
 ```text
 CLI arguments
      |
      v
 AccessRequest
- | Identity
- | Device
- | Resource
- | Action
+  | Identity
+  | Device
+  | Resource
+  | Action
      |
      v
 Policy configuration
- | Load JSON configuration
- | Validate schema and permissions
+  | Load JSON configuration
+  | Validate schema and permissions
      |
      v
 Policy evaluation
- | Authentication
- | Device management
- | Device compliance
- | Action validation
- | Sensitivity validation
- | Restricted-resource role check
- | Explicit permission lookup
+  | Authentication
+  | Device management
+  | Device compliance
+  | Action validation
+  | Sensitivity validation
+  | Restricted-resource role check
+  | Explicit permission lookup
      |
      v
 AccessDecision
- | allowed
- | reason
- | policy_id
+  | Allowed / Denied
+  | Reason
+  | Policy ID
+  | Policy checks
      |
-     v
-Audit event
- | Timestamp
- | Request context
- | Decision details
-     |
-     v
-JSON output / JSON Lines audit log
+     +----------------------+
+     |                      |
+     v                      v
+Decision reporting     Audit event
+  | Explanation          | Timestamp
+  | Failed check         | Request context
+  | Human-readable       | Decision details
+     |                      |
+     +----------+-----------+
+                |
+                v
+       CLI output / JSON
+       / JSON Lines audit log
 ```
 
 ### Main components
 
 | Component | Responsibility |
 |---|---|
-| `models.py` | Defines identities, devices, resources, access requests, and decisions. |
-| `policy.py` | Evaluates access requests using default-deny rules and the loaded policy configuration. |
+| `models.py` | Defines identities, devices, resources, access requests, decisions, and report models. |
+| `policy.py` | Evaluates access requests using ordered security checks and configured policies. |
 | `policy_config.py` | Loads and validates JSON policy configuration. |
-| `cli.py` | Parses command-line arguments and runs the access-control simulation. |
+| `reporting.py` | Generates structured, human-readable explanations for access decisions. |
+| `cli.py` | Parses command-line arguments and runs the simulation. |
 | `audit.py` | Creates structured audit events and serializes them to JSON. |
-| `audit_log.py` | Appends audit events to a persistent JSON Lines log. |
+| `audit_log.py` | Appends audit events to persistent JSON Lines logs. |
 | `config/policies.json` | Stores the default access policy configuration. |
-| `tests/` | Contains automated tests for policy, configuration, audit, and CLI behavior. |
+| `tests/` | Contains unit, property-based, decision-matrix, security, reporting, and CLI tests. |
 
 ## Requirements
 
 - Python 3.11 or later
-- `pip`
-- `pytest` for testing
+- pip
 
 ## Setup
 
@@ -95,12 +102,12 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install the project and test dependencies:
+Install the project and development dependencies:
 
 ```powershell
-python -m pip install wheel
-python -m pip install -e . --no-build-isolation
-python -m pip install pytest
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+python -m pip install ruff mypy
 ```
 
 ## Run the Demo
@@ -141,7 +148,7 @@ Simulate a noncompliant device:
 python -m zero_trust_lab --noncompliant-device
 ```
 
-Each invocation prints a JSON decision containing `allowed`, `reason`, and `policy_id`.
+Each standard invocation prints a JSON decision containing `allowed`, `reason`, and `policy_id`.
 
 ## Configurable Access Policies
 
@@ -218,9 +225,10 @@ The policy engine evaluates requests in the following order:
 A request is allowed only if it passes every check and has an explicit matching permission. Otherwise, access is denied.
 
 The resource sensitivity field affects authorization: `restricted` resources require an authorized role. The `public` and `internal` sensitivity levels do not bypass the other access-control checks.
+
 ### Policy Decision Tracing
 
-Use the `--trace` CLI option to inspect the individual checks performed during an access-control decision.
+Use the `--trace` CLI option to inspect individual checks performed during an access-control decision.
 
 For an allowed request:
 
@@ -236,30 +244,46 @@ python -m zero_trust_lab --unmanaged-device --trace
 
 The output includes a `checks` array. Each entry contains the check name and a Boolean `passed` result.
 
-Example:
-
-```json
-{
-  "allowed": false,
-  "reason": "Device is not managed",
-  "policy_id": "ZT-002",
-  "checks": [
-    {
-      "check": "authentication",
-      "passed": true
-    },
-    {
-      "check": "device_management",
-      "passed": false
-    }
-  ]
-}
-```
-
 Checks are recorded in evaluation order, and evaluation stops at the first failed check. This provides an explainable record of why access was granted or denied.
 
-Tracing is optional. Without `--trace`, the standard CLI output omits the `checks` array. The existing `--audit` option continues to print the audit event.
+Tracing is optional. Without `--trace`, the standard CLI output omits the `checks` array.
 
+### Human-readable Decision Reports
+
+Use `--report` to generate a human-readable explanation of an access decision.
+
+Example: an analyst attempting to access a restricted resource:
+
+```powershell
+python -m zero_trust_lab --role analyst --resource incident-reports --sensitivity restricted --action read --report
+```
+
+Illustrative output:
+
+```text
+ACCESS DECISION REPORT
+========================================
+
+Decision: DENIED
+Policy ID: ZT-007
+
+Explanation:
+The identity's role is not authorized to access this resource.
+
+Failed security check:
+restricted_resource_role
+
+Reason:
+The identity's role is not authorized to access this resource.
+```
+
+An authorized administrator can access the same resource if the configured policy explicitly grants permission:
+
+```powershell
+python -m zero_trust_lab --role admin --resource incident-reports --sensitivity restricted --action read --report
+```
+
+The report distinguishes between successful and failed decisions and identifies the policy responsible for a denial.
 
 ## Access Policy Examples
 
@@ -282,7 +306,7 @@ The lab generates structured audit events for access decisions. An event include
 
 ### Print an audit event
 
-Print the complete timestamped audit event for an allowed request:
+Print the complete timestamped audit event:
 
 ```powershell
 python -m zero_trust_lab --audit
@@ -326,18 +350,47 @@ Run the full test suite:
 python -m pytest -v
 ```
 
-The suite covers:
+The test suite covers:
 
 - Allowed and denied access requests.
 - Authentication and device posture checks.
 - Invalid actions and resource sensitivity values.
 - Explicit permission enforcement and default-deny behavior.
-- Custom policy configurations that grant or deny permissions.
-- Malformed JSON, unsupported versions, invalid fields, and duplicate entries.
+- Custom policy configurations and configuration validation.
+- Security boundary and policy decision-matrix scenarios.
+- Property-based tests using Hypothesis.
+- Decision traces and first-failure behavior.
+- Human-readable reporting.
 - CLI execution and audit output.
 - Audit event creation and persistent JSON Lines logging.
 
-The current test suite has **39 passing tests** as of the latest local test run.
+The latest verified local test run contains **63 passing tests**.
+
+### Code quality checks
+
+The project also uses Ruff for formatting and linting, and mypy for static type checking.
+
+Run the checks locally:
+
+```powershell
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy src/zero_trust_lab
+python -m pytest -q
+```
+
+### Continuous Integration
+
+GitHub Actions automatically runs the project's quality checks when changes are pushed to the repository.
+
+The workflow verifies:
+
+- Ruff formatting.
+- Ruff linting.
+- mypy static type checking.
+- pytest test execution.
+
+This helps ensure that changes are checked consistently before they are considered complete.
 
 ## Threat Model and Limitations
 
@@ -361,10 +414,12 @@ Potential extensions include:
 - Add richer policy conditions, such as time, network context, and device risk.
 - Add policy versioning and explicit policy change history.
 - Add tamper-evident audit records and log integrity verification.
-- Add property-based tests and broader security-focused test cases.
-- Add policy decision tracing and more detailed explanations for denied requests.
-- Add threat scenarios and documented security design decisions.
+- Add integration with an identity provider.
+- Add more advanced security scenarios and threat-model documentation.
+- Add centralized monitoring and visualization of audit events.
 
 ## Disclaimer
 
-Built for educational purposes to explore Zero Trust principles, policy design, configurable authorization, audit logging, and automated security testing. Do not use it as a production security control without substantial additional engineering, threat modeling, and independent security review.
+Built for educational purposes to explore Zero Trust principles, policy design, configurable authorization, audit logging, explainable decisions, and automated security testing.
+
+Do not use it as a production security control without substantial additional engineering, threat modeling, and independent security review.
